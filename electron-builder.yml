@@ -1,0 +1,62 @@
+# branches/branch-erp/electron-builder.yml — WIN-C NSIS + Portable
+# 입력: package.json:16 build.win, 결론 v2 §9, PRD §5, WBS T-00-01
+# 출력: dist/SME-ERP-Setup.exe(NSIS) + dist/SME-ERP-Portable.exe
+appId: com.gensystem.branch-erp
+productName: 지점관리프로그램
+copyright: Copyright © 2026 GenSystem
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - main.js
+  - preload.js
+  - db/**/*
+  - renderer/**/*
+  - scripts/**/*
+  - package.json
+
+# 외부 yml이 package.json build를 override — win target은 여기서 정의
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  icon: build/icon.ico
+
+nsis:
+  oneClick: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: 지점관리프로그램
+  artifactName: SME-ERP-Setup-${version}.${ext}
+  deleteAppDataOnUninstall: false
+  # 언인스톨 시 DB 보존 대화상자 — 결론 v2 §1 / reviewer P0
+  include: build/installer.nsh
+  # Pure NSIS 자체 업데이터 (electron-updater 제거)
+  # 업데이트 전 PRE_OP wal_checkpoint(TRUNCATE) 훅은 main.js에서 강제
+  warningsAsErrors: false
+
+portable:
+  artifactName: SME-ERP-Portable-${version}.${ext}
+  requestExecutionLevel: user
+
+# OneDrive 분리: live DB는 %LOCALAPPDATA%에 고정 — extraResources로 번들하지 않음
+# 데이터 경로는 런타임에 app.getPath('userData') → %LOCALAPPDATA%\SME-ERP\data\mycompany.db 로 분기 (main.js:14, localStore.js:17)
+extraResources: []
+
+# electron-updater 제거 — 순수 NSIS 자체 업데이터 경로
+publish: null
+
+# Windows 10+ x64만 지원 — 결론 v2 P1, PRD §5
+buildVersion: 0.1.0
+compression: normal
+asar: true
+asarUnpack: []
+
+# NSIS 언어/라이선스
+nsisCustomClasspath: []

@@ -111,3 +111,64 @@ test('completeOnboarding: 트랜잭션 원자성 — 잘못된 품목 시 전체
   assert.equal(db.prepare('SELECT COUNT(*) AS c FROM items').get().c, 0);
   db.close();
 });
+
+// ---------- T3' A1 온보딩 템플릿 ----------
+test('T3 템플릿: 상수 유효성 — 사업자번호 형식·단가표·코드 유일', () => {
+  const { TEMPLATE_ITEMS, TEMPLATE_PARTNERS } = require('../../../src/main/services/templates');
+  const { BIZ_NO_RE } = require('../../../src/main/services/onboardingService');
+  const { normalizePriceTable } = require('../../../src/main/services/partnerService');
+  assert.equal(TEMPLATE_PARTNERS.length, 3);
+  assert.deepEqual(TEMPLATE_PARTNERS.map(p => p.partnerName), ['대양공업', '한일금속', '태성정밀']);
+  for (const p of TEMPLATE_PARTNERS) {
+    assert.ok(BIZ_NO_RE.test(p.bizNo), `사업자번호 형식 오류: ${p.partnerName}`);
+    assert.ok(normalizePriceTable(p.priceTable).length > 0, `단가표 비어 있음: ${p.partnerName}`);
+  }
+  assert.deepEqual(TEMPLATE_ITEMS.map(i => i.itemName), ['정밀가공', '밀링가공', '레이저절단']);
+});
+
+test('applyTemplate:true → 거래처 3건+단가표, 대표 품목 주입', () => {
+  const db = createDatabase(':memory:');
+  const result = completeOnboarding(db, validData(), { applyTemplate: true });
+  assert.equal(result.templateApplied, true);
+  const partners = db.prepare('SELECT partner_name AS n, default_price_json AS j FROM partners WHERE company_id = ? ORDER BY partner_code').all(result.companyId);
+  assert.deepEqual(partners.map(p => p.n), ['대양공업', '한일금속', '태성정밀']);
+  for (const p of partners) {
+    assert.ok(JSON.parse(p.j).length > 0, `단가표 비어 있음: ${p.n}`);
+  }
+  const itemNames = db.prepare('SELECT item_name AS n FROM items WHERE company_id = ?').all(result.companyId).map(r => r.n);
+  for (const name of ['정밀가공', '밀링가공', '레이저절단', '정밀가공A', '정밀가공B']) {
+    assert.ok(itemNames.includes(name), `품목 누락: ${name}`);
+  }
+  db.close();
+});
+
+test('applyTemplate 생략/false → 거래처 0건 (기존 동작 보존)', () => {
+  for (const options of [undefined, { applyTemplate: false }]) {
+    const db = createDatabase(':memory:');
+    const result = options === undefined
+      ? completeOnboarding(db, validData())
+      : completeOnboarding(db, validData(), options);
+    assert.equal(result.templateApplied, false);
+    assert.equal(db.prepare('SELECT COUNT(*) AS c FROM partners').get().c, 0);
+    db.close();
+  }
+});
+
+test('applyTemplate:true + 불량 품목 → 전체 롤백(회사·거래처 0건)', () => {
+  const db = createDatabase(':memory:');
+  const data = validData();
+  data.items = [{ itemName: '불량품목', unitPrice: -100 }];
+  assert.throws(() => completeOnboarding(db, data, { applyTemplate: true }), /unitPrice/i);
+  assert.equal(db.prepare('SELECT COUNT(*) AS c FROM companies').get().c, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) AS c FROM partners').get().c, 0);
+  db.close();
+});
+
+test('벤치: 템플릿 포함 온보딩 <1s', () => {
+  const db = createDatabase(':memory:');
+  const start = process.hrtime.bigint();
+  completeOnboarding(db, validData(), { applyTemplate: true });
+  const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6;
+  assert.ok(elapsedMs < 1000, `온보딩 소요 ${elapsedMs.toFixed(1)}ms — 1000ms 초과`);
+  db.close();
+});

@@ -1,5 +1,7 @@
 const crypto = require('node:crypto');
 const { hashPassword } = require('../../shared/security/hasher');
+const { normalizePriceTable } = require('./partnerService');
+const { TEMPLATE_ITEMS, TEMPLATE_PARTNERS } = require('./templates');
 
 const BIZ_NO_RE = /^\d{3}-\d{2}-\d{5}$/;
 
@@ -31,12 +33,14 @@ function validateItem(item) {
   }
 }
 
-function completeOnboarding(db, data) {
+function completeOnboarding(db, data, options = {}) {
   validateOnboardingData(data);
   const { company, admin, items = [] } = data;
+  const applyTemplate = options.applyTemplate === true;
   const companyId = crypto.randomUUID();
   const userId = crypto.randomUUID();
   const { hash, salt } = hashPassword(admin.password);
+  let templateApplied = false;
 
   db.exec('BEGIN IMMEDIATE');
   try {
@@ -56,13 +60,31 @@ function completeOnboarding(db, data) {
       insertItem.run(crypto.randomUUID(), companyId, item.itemName, item.unitPrice);
     }
 
+    // A1 표준 템플릿: 동일 트랜잭션 내 대표 품목 + 거래처 3곳 주입
+    if (applyTemplate) {
+      for (const item of TEMPLATE_ITEMS) {
+        validateItem(item);
+        insertItem.run(crypto.randomUUID(), companyId, item.itemName, item.unitPrice);
+      }
+      const insertPartner = db.prepare(
+        `INSERT INTO partners (id, company_id, partner_code, partner_name, biz_no, ceo_name, biz_type, biz_item, tel, default_price_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      );
+      for (const t of TEMPLATE_PARTNERS) {
+        const priceTable = normalizePriceTable(t.priceTable);
+        insertPartner.run(crypto.randomUUID(), companyId, t.partnerCode, t.partnerName, t.bizNo,
+          t.ceoName || null, t.bizType || null, t.bizItem || null, t.tel || null, JSON.stringify(priceTable));
+      }
+      templateApplied = true;
+    }
+
     db.exec('COMMIT');
   } catch (err) {
     try { db.exec('ROLLBACK'); } catch {}
     throw err;
   }
 
-  return { companyId, userId, onboardingComplete: true };
+  return { companyId, userId, onboardingComplete: true, templateApplied };
 }
 
 module.exports = { isOnboardingNeeded, completeOnboarding, BIZ_NO_RE };

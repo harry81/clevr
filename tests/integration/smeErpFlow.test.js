@@ -13,9 +13,10 @@ const { createDashboardService } = require('../../src/main/services/dashboardSer
 
 const BILLING_MONTH = '2026-09';
 
-// 템플릿 단가표[0] 기준 공급가액: 대양공업 50000 / 한일금속 20000 / 태성정밀 55000
-// 신규 거래처 30000 → VAT(절사 10%) 포함 합계 170500
-const EXPECTED_TOTALS = { supply: 155000, vat: 15500, total: 170500 };
+// T12 합산 정책: priceTable 전 행 unitPrice 합산 (대양공업 50000+35000=85000)
+// 템플릿 합산: 대양공업 85000 / 한일금속 20000 / 태성정밀 55000
+// 신규 거래처 30000 → VAT(총액 기준 절사 10%) 포함 합계 209000
+const EXPECTED_TOTALS = { supply: 190000, vat: 19000, total: 209000 };
 
 function invariantBalance(db, companyId, partnerId) {
   const billed = db.prepare('SELECT COALESCE(SUM(total_amount),0) AS s FROM invoices WHERE company_id=? AND partner_id=?').get(companyId, partnerId).s;
@@ -84,15 +85,15 @@ test('SME-ERP 전체 비즈니스 흐름 (온보딩→청구→입금→대시�
     assert.equal(retry.created.length, 0);
     assert.equal(retry.summary.skippedCount, 4);
 
-    // 7. 부분 입금: 대양공업(청구 55000)의 30% → PARTIAL·잔여 표기·불변식
+    // 7. 부분 입금: 대양공업(청구 93500)에 16500 입금 → PARTIAL·잔여 표기·불변식
     const daeyang = partners.listPartners(companyId, '대양공업')[0];
     const partial = ledger.recordPayment({
       companyId, partnerId: daeyang.id, paymentDate: '2026-09-20',
       amount: 16500, method: '계좌이체', memo: '1차 입금'
     });
     assert.equal(partial.allocations[0].status, 'PARTIAL');
-    assert.equal(partial.allocations[0].remaining, 38500);
-    assert.equal(partial.outstanding, 38500);
+    assert.equal(partial.allocations[0].remaining, 77000);
+    assert.equal(partial.outstanding, 77000);
     const invAfter = db.prepare('SELECT status AS s FROM invoices WHERE partner_id=?').get(daeyang.id).s;
     assert.equal(invAfter, 'PARTIAL');
     invariantBalance(db, companyId, daeyang.id);
@@ -100,7 +101,7 @@ test('SME-ERP 전체 비즈니스 흐름 (온보딩→청구→입금→대시�
     // 8. 완납 입금(잔여액) → PAID·미수 0
     const full = ledger.recordPayment({
       companyId, partnerId: daeyang.id, paymentDate: '2026-09-25',
-      amount: 38500, method: '계좌이체', memo: '잔액 입금'
+      amount: 77000, method: '계좌이체', memo: '잔액 입금'
     });
     assert.equal(full.allocations[0].status, 'PAID');
     assert.equal(full.outstanding, 0);
@@ -109,8 +110,8 @@ test('SME-ERP 전체 비즈니스 흐름 (온보딩→청구→입금→대시�
     // 9. 대시보드: KPI 1원 정확·TOP5 정렬/완납 제외·최근 5건 최신순
     const summary = dashboard.getDashboardSummary({ companyId, baseMonth: BILLING_MONTH });
     assert.equal(summary.kpi.billedAmount, EXPECTED_TOTALS.total);
-    assert.equal(summary.kpi.paidAmount, 55000);
-    assert.equal(summary.kpi.outstandingAmount, EXPECTED_TOTALS.total - 55000);
+    assert.equal(summary.kpi.paidAmount, 93500);
+    assert.equal(summary.kpi.outstandingAmount, EXPECTED_TOTALS.total - 93500);
     const debts = summary.topDebtors.map(d => d.outstanding);
     assert.deepEqual(debts, [60500, 33000, 22000]);
     assert.ok(!summary.topDebtors.some(d => d.partnerName === '대양공업'));

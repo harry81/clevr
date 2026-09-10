@@ -70,7 +70,8 @@ function createInvoiceService(db) {
         if (!p) throw new Error('존재하지 않는 거래처가 포함되어 있습니다');
         if (issued.has(p.id)) { skipped.push(p.id); continue; }
         const priceTable = p.default_price_json ? JSON.parse(p.default_price_json) : [];
-        const supply = priceTable[0] ? priceTable[0].unitPrice : 0;
+        const supply = (Array.isArray(priceTable) ? priceTable : [])
+          .reduce((acc, it) => acc + (Number(it.unitPrice) || 0), 0);
         if (!(supply > 0)) { skipped.push(p.id); continue; }
 
         const vat = computeVat(supply);

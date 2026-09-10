@@ -54,7 +54,8 @@ window.App.views.invoices = {
         return;
       }
       const cands = partners.map((p) => {
-        const supply = (p.priceTable && p.priceTable[0] && p.priceTable[0].unitPrice) || 0;
+        const supply = (Array.isArray(p.priceTable) ? p.priceTable : [])
+          .reduce((acc, it) => acc + (Number(it.unitPrice) || 0), 0);
         return { partner: p, supply, vat: vatOf(supply), total: supply + vatOf(supply) };
       });
       const sumS = cands.reduce((s, c) => s + (c.supply > 0 ? c.supply : 0), 0);

@@ -139,3 +139,42 @@ test('createInvoiceBatch: 벤치 — 50건 배치 0.1초 미만 (A2 렉 게이�
   assert.equal(result.summary.totalCount, 50);
   assert.ok(elapsedMs < 100, `배치 소요 ${elapsedMs.toFixed(1)}ms — 100ms 초과`);
 });
+
+// ---------- T12 다중 품목 합산 ----------
+test('createInvoiceBatch: 다중 품목 단가표 전 행 합산 (50000+35000)', () => {
+  const { db, partners, invoices, companyId } = setup();
+  const p = partners.savePartner(companyId, {
+    partnerName: '다품목거래처',
+    priceTable: [
+      { itemName: '정밀가공', unitPrice: 50000 },
+      { itemName: '밀링가공', unitPrice: 35000 }
+    ]
+  });
+  const result = invoices.createInvoiceBatch({ companyId, billingMonth: '2026-09' });
+  assert.equal(result.summary.totalCount, 1);
+  assert.equal(result.created[0].supplyAmount, 85000);
+  assert.equal(result.created[0].vatAmount, 8500);
+  assert.equal(result.created[0].totalAmount, 93500);
+  const ledger = db.prepare(
+    "SELECT * FROM ledger_entries WHERE company_id = ? AND partner_id = ? AND entry_type = '매출청구'"
+  ).get(companyId, p.id);
+  assert.equal(ledger.supply_amount, 85000);
+  assert.equal(ledger.vat_amount, 8500);
+  assert.equal(ledger.running_balance, 93500);
+});
+
+test('createInvoiceBatch: 0원 품목 포함 합산 (10000+0)', () => {
+  const { partners, invoices, companyId } = setup();
+  partners.savePartner(companyId, {
+    partnerName: '견본포함거래처',
+    priceTable: [
+      { itemName: '절곡가공', unitPrice: 10000 },
+      { itemName: '견본', unitPrice: 0 }
+    ]
+  });
+  const result = invoices.createInvoiceBatch({ companyId, billingMonth: '2026-09' });
+  assert.equal(result.summary.totalCount, 1);
+  assert.equal(result.created[0].supplyAmount, 10000);
+  assert.equal(result.created[0].vatAmount, 1000);
+  assert.equal(result.created[0].totalAmount, 11000);
+});

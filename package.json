@@ -15,8 +15,7 @@
   "license": "UNLICENSED",
   "devDependencies": {
     "electron": "^44.3.0",
-    "electron-builder": "^24.13.3",
-    "tsx": "^4.19.0"
+    "electron-builder": "^24.13.3"
   },
   "build": {
     "appId": "com.gensystem.branch-erp",
@@ -25,7 +24,5 @@
       "target": "nsis"
     }
   },
-  "dependencies": {
-    "xlsx": "^0.18.5"
-  }
+  "dependencies": {}
 }

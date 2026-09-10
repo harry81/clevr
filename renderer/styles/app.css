@@ -1,0 +1,123 @@
+/* SME-ERP SPA layout — design-system.css 토큰 재사용 (폴백 포함) */
+:root {
+  --sme-brand: var(--color-brand-600, #2563eb);
+  --sme-brand-dark: var(--color-brand-700, #1d4ed8);
+  --sme-bg: var(--color-bg-app, #f8fafc);
+  --sme-card: var(--color-bg-primary, #ffffff);
+  --sme-border: var(--color-gray-200, #e2e8f0);
+  --sme-text: var(--color-gray-900, #0f172a);
+  --sme-muted: var(--color-gray-500, #64748b);
+  --sme-ok: var(--color-success, #10b981);
+  --sme-ok-bg: var(--color-success-bg, #ecfdf5);
+  --sme-warn: var(--color-warning, #f59e0b);
+  --sme-warn-bg: var(--color-warning-bg, #fffbeb);
+  --sme-err: var(--color-error, #ef4444);
+  --sme-err-bg: var(--color-error-bg, #fef2f2);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--sme-bg); color: var(--sme-text);
+  font-family: "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; font-size: 14px; }
+#app { min-height: 100vh; }
+
+/* ---------- auth / centered cards ---------- */
+.sme-center { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.sme-card { background: var(--sme-card); border: 1px solid var(--sme-border); border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08); padding: 28px; width: 100%; max-width: 440px; }
+.sme-card.wide { max-width: 640px; }
+.sme-brand { font-size: 22px; font-weight: 800; color: var(--sme-brand); margin: 0 0 4px; }
+.sme-sub { color: var(--sme-muted); margin: 0 0 20px; font-size: 13px; }
+.sme-field { margin-bottom: 12px; }
+.sme-field label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.sme-field input, .sme-field select, .sme-toolbar input, .sme-toolbar select,
+.sme-form input, .sme-form select {
+  width: 100%; padding: 9px 10px; border: 1px solid var(--sme-border); border-radius: 8px; font-size: 14px; }
+.sme-field input:focus, .sme-toolbar input:focus { outline: 2px solid var(--sme-brand); outline-offset: 0; border-color: var(--sme-brand); }
+.sme-btn { display: inline-block; border: 0; border-radius: 8px; padding: 10px 16px; font-size: 14px;
+  font-weight: 700; cursor: pointer; background: var(--sme-brand); color: #fff; }
+.sme-btn:hover { background: var(--sme-brand-dark); }
+.sme-btn.block { width: 100%; }
+.sme-btn.ghost { background: #fff; color: var(--sme-text); border: 1px solid var(--sme-border); }
+.sme-btn.danger { background: var(--sme-err); }
+.sme-btn:disabled { opacity: 0.55; cursor: default; }
+.sme-error { color: var(--sme-err); font-size: 13px; min-height: 20px; margin: 8px 0; }
+.sme-row { display: flex; gap: 8px; }
+.sme-row > * { flex: 1; }
+
+/* ---------- app shell ---------- */
+.sme-top { display: flex; align-items: center; gap: 16px; padding: 12px 20px;
+  background: var(--sme-card); border-bottom: 1px solid var(--sme-border); position: sticky; top: 0; z-index: 10; }
+.sme-logo { font-weight: 800; color: var(--sme-brand); font-size: 17px; white-space: nowrap; }
+.sme-nav { display: flex; gap: 4px; }
+.sme-nav button { border: 0; background: transparent; padding: 8px 14px; border-radius: 8px;
+  font-size: 14px; font-weight: 600; cursor: pointer; color: var(--sme-muted); }
+.sme-nav button.active, .sme-nav button:hover { background: #eff6ff; color: var(--sme-brand); }
+.sme-user { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--sme-muted); font-size: 13px; }
+.sme-main { padding: 20px; max-width: 1180px; margin: 0 auto; }
+.sme-title { font-size: 19px; font-weight: 800; margin: 4px 0 14px; }
+.sme-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.sme-toolbar input, .sme-toolbar select { width: auto; }
+
+/* ---------- dashboard ---------- */
+.sme-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.sme-kpi { background: var(--sme-card); border: 1px solid var(--sme-border); border-radius: 12px; padding: 16px; }
+.sme-kpi .k-label { font-size: 12px; color: var(--sme-muted); font-weight: 600; }
+.sme-kpi .k-value { font-size: 24px; font-weight: 800; margin-top: 4px; }
+.sme-kpi.danger .k-value { color: var(--sme-err); }
+.sme-badge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; margin-left: 6px; }
+.sme-badge.up { background: var(--sme-ok-bg); color: #065f46; }
+.sme-badge.down { background: var(--sme-err-bg); color: #991b1b; }
+.sme-grid2 { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; }
+.sme-panel { background: var(--sme-card); border: 1px solid var(--sme-border); border-radius: 12px; padding: 16px; }
+.sme-panel h3 { margin: 0 0 10px; font-size: 15px; }
+
+/* ---------- tables ---------- */
+table.sme-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sme-table th, .sme-table td { padding: 8px 10px; border-bottom: 1px solid var(--sme-border); text-align: left; }
+.sme-table th { color: var(--sme-muted); font-size: 12px; background: #f8fafc; }
+.sme-table td.num, .sme-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.sme-status { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; }
+.sme-status.PAID { background: var(--sme-ok-bg); color: #065f46; }
+.sme-status.PARTIAL { background: var(--sme-warn-bg); color: #92400e; }
+.sme-status.UNPAID { background: var(--sme-err-bg); color: #991b1b; }
+.sme-link { background: none; border: 0; color: var(--sme-brand); cursor: pointer; font-size: 13px; padding: 0; }
+
+/* ---------- ledger split ---------- */
+.sme-split { display: grid; grid-template-columns: 340px 1fr; gap: 12px; align-items: start; }
+.sme-plist { list-style: none; margin: 0; padding: 0; max-height: 70vh; overflow: auto; }
+.sme-plist li { border: 1px solid var(--sme-border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; background: #fff; }
+.sme-plist li.active { border-color: var(--sme-brand); box-shadow: 0 0 0 2px #bfdbfe; }
+.sme-plist .p-name { font-weight: 700; }
+.sme-plist .p-bal { font-size: 13px; font-weight: 700; color: var(--sme-err); }
+.sme-plist .p-sub { font-size: 12px; color: var(--sme-muted); }
+.sme-ledger-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+.sme-ledger-head .big { font-size: 26px; font-weight: 800; color: var(--sme-err); }
+.sme-form { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; background: #f8fafc;
+  border: 1px solid var(--sme-border); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.sme-form label { font-size: 11px; color: var(--sme-muted); font-weight: 600; display: block; margin-bottom: 2px; }
+
+/* ---------- onboarding wizard ---------- */
+.sme-steps { display: flex; gap: 6px; margin-bottom: 18px; }
+.sme-steps span { flex: 1; height: 6px; border-radius: 3px; background: var(--sme-border); }
+.sme-steps span.on { background: var(--sme-brand); }
+.sme-check { display: flex; gap: 8px; align-items: flex-start; background: #eff6ff; border: 1px solid #bfdbfe;
+  border-radius: 8px; padding: 10px; margin: 12px 0; font-size: 13px; }
+.sme-itemrow { display: flex; gap: 8px; margin-bottom: 8px; }
+.sme-itemrow input:first-child { flex: 2; }
+.sme-itemrow input:last-child { flex: 1; }
+
+/* ---------- modal / toast ---------- */
+.sme-modal-back { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
+  display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+.sme-modal { background: #fff; border-radius: 12px; max-width: 640px; width: 100%; max-height: 84vh;
+  overflow: auto; padding: 20px; }
+#toast-root { position: fixed; right: 16px; bottom: 16px; z-index: 100; display: flex; flex-direction: column; gap: 8px; }
+.sme-toast { background: #0f172a; color: #fff; border-radius: 8px; padding: 10px 14px; font-size: 13px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); max-width: 360px; }
+.sme-toast.error { background: #991b1b; }
+.sme-toast.ok { background: #065f46; }
+.sme-empty { color: var(--sme-muted); padding: 24px; text-align: center; }
+
+@media (max-width: 900px) {
+  .sme-kpis, .sme-grid2, .sme-split { grid-template-columns: 1fr; }
+  .sme-form { grid-template-columns: 1fr 1fr; }
+}

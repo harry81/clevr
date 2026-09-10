@@ -74,16 +74,6 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
-  // WIN-C: 127.0.0.1:3000 자동오픈 — Stand-Alone 원칙 (결론 v2 §1)
-  // Electron 창과 별개로 브라우저 자동 오픈 (NSIS 설치 후, Portable start.bat 후)
-  // 지연 실행으로 창이 뜬 뒤 브라우저가 포그라운드에 오도록
-  if (process.platform === 'win32') {
-    setTimeout(() => {
-      // Electron 창이 주 화면이며, 외부 브라우저 자동 오픈은 옵션 (실패 무시)
-      shell.openExternal('http://127.0.0.1:3000').catch(() => {});
-    }, 1500);
-  }
-
   // WIN-C: 트레이 — 닫기 시 트레이로 최소화 (win32)
   if (process.platform === 'win32') {
     mainWindow.on('close', (e) => {

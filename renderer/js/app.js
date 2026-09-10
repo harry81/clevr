@@ -68,6 +68,7 @@ window.App = (() => {
         <div class="sme-logo">SME-ERP</div>
         <nav class="sme-nav">
           ${nav('dashboard', '대시보드')}
+          ${nav('partners', '거래처')}
           ${nav('invoices', '청구서')}
           ${nav('ledger', '입금/원장')}
         </nav>

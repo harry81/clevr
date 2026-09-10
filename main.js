@@ -81,7 +81,7 @@ function createWindow() {
         e.preventDefault();
         mainWindow.hide();
         if (tray) tray.displayBalloon({
-          title: '지점관리프로그램',
+          title: 'SME-ERP',
           content: '트레이에서 계속 실행 중입니다. 종료하려면 트레이 메뉴를 이용하세요.'
         });
       }
@@ -99,7 +99,7 @@ function createTray() {
     icon = nativeImage.createFromPath(iconPath);
   }
   tray = new Tray(icon);
-  tray.setToolTip('지점관리프로그램 (SME-ERP)');
+  tray.setToolTip('SME-ERP');
 
   const contextMenu = Menu.buildFromTemplate([
     {

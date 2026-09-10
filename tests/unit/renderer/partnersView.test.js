@@ -8,6 +8,8 @@ const { execFileSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..', '..', '..');
 const RENDERER_DIR = path.join(ROOT, 'renderer');
 const PARTNERS_JS = path.join(RENDERER_DIR, 'js', 'views', 'partners.js');
+const ONBOARDING_JS = path.join(RENDERER_DIR, 'js', 'views', 'onboarding.js');
+const APP_CSS = path.join(RENDERER_DIR, 'styles', 'app.css');
 const INDEX_HTML = path.join(RENDERER_DIR, 'index.html');
 const APP_JS = path.join(RENDERER_DIR, 'js', 'app.js');
 
@@ -73,5 +75,21 @@ test('partners.js 금지패턴 0건', () => {
   for (const { name, re } of BANNED) {
     const found = src.split('\n').filter((line) => new RegExp(re.source, re.flags).test(line));
     assert.equal(found.length, 0, `${name} 잔존:\n${found.slice(0, 5).join('\n')}`);
+  }
+});
+
+test('단가 천단위 콤마 서식 (partners + onboarding)', () => {
+  const pt = fs.readFileSync(PARTNERS_JS, 'utf8');
+  assert.ok(pt.includes('toLocaleString'), 'partners.js 단가 콤마 서식(toLocaleString) 없음');
+  const ob = fs.readFileSync(ONBOARDING_JS, 'utf8');
+  assert.ok(ob.includes('toLocaleString'), 'onboarding.js 단가 콤마 서식(toLocaleString) 없음');
+});
+
+test('품목단가표 행 레이아웃 명시적 클래스 (가상 선택자 제거)', () => {
+  const css = fs.readFileSync(APP_CSS, 'utf8');
+  assert.ok(!css.includes('.sme-itemrow input:first-child'), '.sme-itemrow input:first-child 잔존');
+  assert.ok(!css.includes('.sme-itemrow input:last-child'), '.sme-itemrow input:last-child 잔존');
+  for (const cls of ['.pt-item-name', '.pt-item-price', '.pt-item-del', '.ob-item-name', '.ob-item-price']) {
+    assert.ok(css.includes(cls), `app.css 명시적 클래스 누락: ${cls}`);
   }
 });

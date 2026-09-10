@@ -22,8 +22,26 @@ window.App.views.onboarding = {
     function itemRow(name = '', price = '') {
       return `<div class="sme-itemrow">
         <input class="ob-item-name" placeholder="품목명 (예: 정밀가공)" value="${App.esc(name)}">
-        <input class="ob-item-price" inputmode="numeric" placeholder="기본단가" value="${App.esc(price)}">
+        <input class="ob-item-price" inputmode="numeric" placeholder="기본단가" value="${App.esc(fmtPrice(price))}">
       </div>`;
+    }
+
+    function fmtPrice(v) {
+      if (v === '' || v === null || v === undefined) return '';
+      const digits = String(v).replace(/\D/g, '');
+      if (!digits) return '';
+      return Number(digits).toLocaleString('ko-KR');
+    }
+
+    function bindPriceComma(scope) {
+      scope.querySelectorAll('.ob-item-price').forEach((el) => {
+        if (el._commaBound) return;
+        el._commaBound = true;
+        el.addEventListener('input', () => {
+          const digits = el.value.replace(/\D/g, '');
+          el.value = digits ? Number(digits).toLocaleString('ko-KR') : '';
+        });
+      });
     }
 
     function draw() {
@@ -67,6 +85,7 @@ window.App.views.onboarding = {
 
       const biz = root.querySelector('#ob-biz');
       if (biz) maskBizNo(biz);
+      bindPriceComma(root);
       root.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => {
         if (!collect(b.dataset.go)) return;
         step = Number(b.dataset.go);

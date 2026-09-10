@@ -26,9 +26,29 @@ window.App.views.partners = {
     function itemRow(name = '', price = '') {
       return `<div class="sme-itemrow" data-itemrow>
         <input class="pt-item-name" placeholder="품목명" value="${App.esc(name)}">
-        <input class="pt-item-price" inputmode="numeric" placeholder="단가" value="${App.esc(price)}">
+        <input class="pt-item-price" inputmode="numeric" placeholder="단가" value="${App.esc(fmtPrice(price))}">
         <button type="button" class="sme-btn ghost pt-item-del" style="flex:0 0 auto;padding:9px 12px">삭제</button>
       </div>`;
+    }
+
+    function fmtPrice(v) {
+      if (v === '' || v === null || v === undefined) return '';
+      const digits = String(v).replace(/\D/g, '');
+      if (!digits) return '';
+      return Number(digits).toLocaleString('ko-KR');
+    }
+
+    function formatPriceInput(el) {
+      const digits = el.value.replace(/\D/g, '');
+      el.value = digits ? Number(digits).toLocaleString('ko-KR') : '';
+    }
+
+    function bindPriceComma(scope) {
+      scope.querySelectorAll('.pt-item-price').forEach((el) => {
+        if (el._commaBound) return;
+        el._commaBound = true;
+        el.addEventListener('input', () => formatPriceInput(el));
+      });
     }
 
     async function draw() {
@@ -121,9 +141,11 @@ window.App.views.partners = {
         b.onclick = () => { b.closest('[data-itemrow]').remove(); };
       });
       bindDel();
+      bindPriceComma(overlay);
       overlay.querySelector('#pt-add-item').addEventListener('click', () => {
         itemsBox.insertAdjacentHTML('beforeend', itemRow('', ''));
         bindDel();
+        bindPriceComma(overlay);
       });
       overlay.querySelector('#pt-cancel').addEventListener('click', () => closeDrawer());
 

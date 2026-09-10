@@ -12,7 +12,7 @@ directories:
 files:
   - main.js
   - preload.js
-  - db/**/*
+  - src/**/*
   - renderer/**/*
   - scripts/**/*
   - package.json
@@ -59,4 +59,3 @@ asar: true
 asarUnpack: []
 
 # NSIS 언어/라이선스
-nsisCustomClasspath: []

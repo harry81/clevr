@@ -16,9 +16,11 @@ function createInvoiceService(db) {
     return { prefix, nextSeq: max + 1 };
   }
 
+  // running_balance 체인은 기표순(rowid) 기준 — created_at은 초 단위라
+  // 같은 초 다수 기표가 동점이 되어 UUID 임의 순서로 잘못된 행을 고름 (P1 회귀)
   function lastBalance(companyId, partnerId) {
     const row = db.prepare(
-      'SELECT running_balance FROM ledger_entries WHERE company_id = ? AND partner_id = ? ORDER BY created_at DESC, id DESC LIMIT 1'
+      'SELECT running_balance FROM ledger_entries WHERE company_id = ? AND partner_id = ? ORDER BY rowid DESC LIMIT 1'
     ).get(companyId, partnerId);
     return row ? row.running_balance : 0;
   }

@@ -152,6 +152,43 @@ test('불변식: running_balance == Σ청구 − Σ입금 (재구성 대조) + �
   assert.equal(rows[rows.length - 1].r, billed - paid);
 });
 
+test('불변식(회귀 P1): 같은 초 배치→입금 교차 연속 시에도 running_balance==Σ−Σ', () => {
+  // Reviewer 재현(9월→10월→입금→11월, 마지막 running 99000≠69000)과 동일 패턴의 확장판.
+  // 전 ops가 수 ms 내 완료 → created_at(초 단위) 동점 조건에서 기표가 연속 발생한다.
+  // 구 코드(created_at+UUID 정렬)는 매 배치마다 동점 행 중 추첨해야 하므로
+  // 전체 체인을 맞출 확률이 ≈1/50만 — 사실상 결정적 Red. 수정 후(rowid)는 항상 Green.
+  const { db, partners, invoices, ledger, companyId } = setup();
+  const p = addPartner(partners, companyId, '한빛정밀', 10000);
+  const pay = (date, amount) =>
+    ledger.recordPayment({ companyId, partnerId: p.id, paymentDate: date, amount, method: '계좌이체' });
+
+  invoices.createInvoiceBatch({ companyId, billingMonth: '2026-01', partnerIds: [p.id] });
+  invoices.createInvoiceBatch({ companyId, billingMonth: '2026-02', partnerIds: [p.id] });
+  pay('2026-02-10', 5000);
+  invoices.createInvoiceBatch({ companyId, billingMonth: '2026-03', partnerIds: [p.id] });
+  invoices.createInvoiceBatch({ companyId, billingMonth: '2026-04', partnerIds: [p.id] });
+  pay('2026-04-10', 7000);
+  invoices.createInvoiceBatch({ companyId, billingMonth: '2026-05', partnerIds: [p.id] });
+  invoices.createInvoiceBatch({ companyId, billingMonth: '2026-06', partnerIds: [p.id] });
+  pay('2026-06-10', 9000);
+  invoices.createInvoiceBatch({ companyId, billingMonth: '2026-07', partnerIds: [p.id] });
+  invoices.createInvoiceBatch({ companyId, billingMonth: '2026-08', partnerIds: [p.id] });
+
+  const billed = db.prepare('SELECT COALESCE(SUM(total_amount),0) AS s FROM invoices WHERE company_id=? AND partner_id=?').get(companyId, p.id).s;
+  const paid = db.prepare('SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE company_id=? AND partner_id=?').get(companyId, p.id).s;
+  assert.equal(billed, 88000);
+  assert.equal(paid, 21000);
+
+  const rows = db.prepare(
+    `SELECT entry_type AS t, supply_amount AS s, vat_amount AS v, paid_amount AS p, running_balance AS r
+     FROM ledger_entries WHERE company_id = ? AND partner_id = ? ORDER BY rowid ASC`
+  ).all(companyId, p.id);
+  assert.equal(rows.length, 11);
+  assert.deepEqual(rows.map(r => r.r),
+    [11000, 22000, 17000, 28000, 39000, 32000, 43000, 54000, 45000, 56000, 67000]);
+  assert.equal(rows[rows.length - 1].r, billed - paid);
+});
+
 // ---------- 원장 조회 ----------
 test('getPartnerLedger: 타임라인 행별 running_balance + 요약(총청구/총입금/미수)', () => {
   const { partners, invoices, ledger, companyId } = setup();

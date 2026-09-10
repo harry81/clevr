@@ -1,9 +1,8 @@
-# branches/branch-erp/electron-builder.yml — WIN-C NSIS + Portable
-# 입력: package.json:16 build.win, 결론 v2 §9, PRD §5, WBS T-00-01
+# SME-ERP electron-builder.yml — WIN NSIS + Portable
 # 출력: dist/SME-ERP-Setup.exe(NSIS) + dist/SME-ERP-Portable.exe
-appId: com.gensystem.branch-erp
-productName: 지점관리프로그램
-copyright: Copyright © 2026 GenSystem
+appId: org.smeerp.app
+productName: SME-ERP
+copyright: Copyright © 2026 SME-ERP Contributors
 
 directories:
   output: dist
@@ -32,10 +31,10 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: 지점관리프로그램
+  shortcutName: SME-ERP
   artifactName: SME-ERP-Setup-${version}.${ext}
   deleteAppDataOnUninstall: false
-  # 언인스톨 시 DB 보존 대화상자 — 결론 v2 §1 / reviewer P0
+  # 언인스톨 시 DB 보존 대화상자
   include: build/installer.nsh
   # Pure NSIS 자체 업데이터 (electron-updater 제거)
   # 업데이트 전 PRE_OP wal_checkpoint(TRUNCATE) 훅은 main.js에서 강제
@@ -52,7 +51,7 @@ extraResources: []
 # electron-updater 제거 — 순수 NSIS 자체 업데이터 경로
 publish: null
 
-# Windows 10+ x64만 지원 — 결론 v2 P1, PRD §5
+# Windows 10+ x64만 지원
 buildVersion: 0.1.0
 compression: normal
 asar: true

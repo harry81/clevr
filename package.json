@@ -1,7 +1,7 @@
 {
-  "name": "branch-erp",
+  "name": "sme-erp",
   "version": "0.1.0",
-  "description": "지점 관리 프로그램 (구 DAWIN 대체)",
+  "description": "소규모 제조업을 위한 경량 오픈소스 ERP (Electron + SQLite, 로컬 퍼스트)",
   "main": "main.js",
   "scripts": {
     "start": "electron . --no-sandbox --disable-gpu",
@@ -12,15 +12,15 @@
     "test:runtime": "ELECTRON_RUN_AS_NODE=1 electron --test tests/smoke/electronRuntime.test.js",
     "test:e2e": "node --test \"tests/integration/**/*.test.js\""
   },
-  "author": "GenSystem",
-  "license": "UNLICENSED",
+  "author": "SME-ERP Contributors",
+  "license": "MIT",
   "devDependencies": {
     "electron": "^44.3.0",
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "com.gensystem.branch-erp",
-    "productName": "지점관리프로그램",
+    "appId": "org.smeerp.app",
+    "productName": "SME-ERP",
     "win": {
       "target": "nsis"
     }

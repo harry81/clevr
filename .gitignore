@@ -60,3 +60,11 @@ tmp/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Internal-only docs (not for public release; kept on disk, untracked)
+TEAM.md
+docs/WBS_Phase1.md
+docs/Screen_Review.md
+docs/Windows_Install_Spec.md
+docs/ui-improvement/
+docs/screens/

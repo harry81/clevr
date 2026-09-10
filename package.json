@@ -9,7 +9,8 @@
     "build:win:dir": "electron-builder --win --dir --config electron-builder.yml",
     "test": "node --test \"tests/unit/**/*.test.js\"",
     "test:phase0": "node --test tests/unit/security/hasher.test.js tests/unit/db/sqliteEngine.test.js tests/unit/services/onboardingService.test.js",
-    "test:runtime": "ELECTRON_RUN_AS_NODE=1 electron --test tests/smoke/electronRuntime.test.js"
+    "test:runtime": "ELECTRON_RUN_AS_NODE=1 electron --test tests/smoke/electronRuntime.test.js",
+    "test:e2e": "node --test \"tests/integration/**/*.test.js\""
   },
   "author": "GenSystem",
   "license": "UNLICENSED",

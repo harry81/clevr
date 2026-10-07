@@ -42,10 +42,51 @@ test('parse: 헤더 감지(상호/사업자) + 사업자번호·단가 정규화
   assert.equal(rows[0].priceTable[0].unitPrice, 50000);
 });
 
+test('parse: 이동전화 대역은 사업자번호로 정규화하지 않음(공유 normalizeBizNo)', () => {
+  const { rows } = parsePartnersText('학생A\t01012345678\t\t\t수강료\t300000');
+  assert.equal(rows[0].bizNo, '01012345678');
+});
+
 test('parse: CSV(콤마) 구분자 지원', () => {
   const { rows } = parsePartnersText('한빛정밀,123-45-67890,홍길동,054-111-2222,정밀가공,50000');
   assert.equal(rows.length, 1);
   assert.equal(rows[0].partnerName, '한빛정밀');
+});
+
+test('parse: 신규 헤더(이름 / 상호 · 연락처 / 식별번호) 수용 + 빈 식별번호 허용', () => {
+  const text = [
+    '이름 / 상호\t연락처 / 식별번호\t대표자\t연락처\t항목명\t금액',
+    '한빛정밀\t\t홍길동\t054-111-2222\t수강료\t50000',
+    '가나다공업\t111-22-33333\t김가나\t\t수강료\t35000',
+  ].join('\n');
+  const { rows, errors } = parsePartnersText(text);
+  assert.equal(errors.length, 0);
+  assert.equal(rows.length, 2);
+  const first = rows.find((r) => r.partnerName === '한빛정밀');
+  assert.equal(first.bizNo, null);
+});
+
+test('parse: 신규 헤더(회원 · 식별번호) 수용 (하위 호환 — 사업자번호 헤더도 기존 테스트가 보증)', () => {
+  const text = [
+    '회원명\t식별번호\t대표자\t연락처\t항목명\t금액',
+    '한빛정밀\t학원-001\t홍길동\t054-111-2222\t수강료\t50000',
+  ].join('\n');
+  const { rows, errors } = parsePartnersText(text);
+  assert.equal(errors.length, 0);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].bizNo, '학원-001');
+});
+
+test('saveBulk: 빈/임의 bizNo 행도 등록 통과 (중복 검사 면제)', () => {
+  const { db, service, companyId } = setup();
+  const res = service.savePartnersBulk(companyId, [
+    { partnerName: '빈번호', bizNo: '', priceTable: [{ itemName: '수강료', unitPrice: 50000 }] },
+    { partnerName: '학원A', bizNo: '학원-001' },
+    { partnerName: '학원B', bizNo: '학원-001' },
+  ]);
+  assert.equal(res.created, 3);
+  assert.equal(res.errors.length, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) AS c FROM partners').get().c, 3);
 });
 
 test('parse: 컬럼 부족/단가 오류 → 행별 error, 전체 중단 없음', () => {

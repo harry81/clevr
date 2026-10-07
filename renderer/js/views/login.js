@@ -4,8 +4,8 @@ window.App.views.login = {
   async render(root) {
     root.innerHTML = `
       <div class="sme-center"><div class="sme-card">
-        <p class="sme-brand">SME-ERP</p>
-        <p class="sme-sub">소규모 제조업용 오픈소스 ERP</p>
+        <p class="sme-brand">청구도우미</p>
+        <p class="sme-sub">월 정기 청구·미납 관리 청구도우미</p>
         <form id="login-form">
           <div class="sme-field"><label for="login-id">아이디</label>
             <input id="login-id" autocomplete="username" required></div>

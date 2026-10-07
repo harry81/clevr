@@ -13,10 +13,9 @@ const { createDashboardService } = require('../../src/main/services/dashboardSer
 
 const BILLING_MONTH = '2026-09';
 
-// T12 합산 정책: priceTable 전 행 unitPrice 합산 (대양공업 50000+35000=85000)
-// 템플릿 합산: 대양공업 85000 / 한일금속 20000 / 태성정밀 55000
-// 신규 거래처 30000 → VAT(총액 기준 절사 10%) 포함 합계 209000
-const EXPECTED_TOTALS = { supply: 190000, vat: 19000, total: 209000 };
+// T4 학원 템플릿: 김민수 330000(수강료300000+교재비30000) / 박서연 250000 / 이준호 320000(수강료300000+기타회비20000)
+// 신규 거래처 30000 → 공급가액 합 930000, VAT(절사 10%) 93000, 합계 1023000
+const EXPECTED_TOTALS = { supply: 930000, vat: 93000, total: 1023000 };
 
 function invariantBalance(db, companyId, partnerId) {
   const billed = db.prepare('SELECT COALESCE(SUM(total_amount),0) AS s FROM invoices WHERE company_id=? AND partner_id=?').get(companyId, partnerId).s;
@@ -49,7 +48,7 @@ test('SME-ERP 전체 비즈니스 흐름 (온보딩→청구→입금→대시�
     assert.equal(isOnboardingNeeded(db), false);
     const { companyId } = ob;
     const seeded = partners.listPartners(companyId).map(p => p.partnerName).sort();
-    assert.deepEqual(seeded, ['대양공업', '태성정밀', '한일금속']);
+    assert.deepEqual(seeded, ['김민수', '박서연', '이준호']);
 
     // 3. 로그인: 해시 정합 (틀린 비번 거부)
     const admin = db.prepare('SELECT * FROM users WHERE company_id=? AND username=?').get(companyId, 'admin');
@@ -85,36 +84,36 @@ test('SME-ERP 전체 비즈니스 흐름 (온보딩→청구→입금→대시�
     assert.equal(retry.created.length, 0);
     assert.equal(retry.summary.skippedCount, 4);
 
-    // 7. 부분 입금: 대양공업(청구 93500)에 16500 입금 → PARTIAL·잔여 표기·불변식
-    const daeyang = partners.listPartners(companyId, '대양공업')[0];
+    // 7. 부분 입금: 김민수(청구 363000)에 16500 입금 → PARTIAL·잔여 표기·불변식
+    const student = partners.listPartners(companyId, '김민수')[0];
     const partial = ledger.recordPayment({
-      companyId, partnerId: daeyang.id, paymentDate: '2026-09-20',
+      companyId, partnerId: student.id, paymentDate: '2026-09-20',
       amount: 16500, method: '계좌이체', memo: '1차 입금'
     });
     assert.equal(partial.allocations[0].status, 'PARTIAL');
-    assert.equal(partial.allocations[0].remaining, 77000);
-    assert.equal(partial.outstanding, 77000);
-    const invAfter = db.prepare('SELECT status AS s FROM invoices WHERE partner_id=?').get(daeyang.id).s;
+    assert.equal(partial.allocations[0].remaining, 346500);
+    assert.equal(partial.outstanding, 346500);
+    const invAfter = db.prepare('SELECT status AS s FROM invoices WHERE partner_id=?').get(student.id).s;
     assert.equal(invAfter, 'PARTIAL');
-    invariantBalance(db, companyId, daeyang.id);
+    invariantBalance(db, companyId, student.id);
 
     // 8. 완납 입금(잔여액) → PAID·미수 0
     const full = ledger.recordPayment({
-      companyId, partnerId: daeyang.id, paymentDate: '2026-09-25',
-      amount: 77000, method: '계좌이체', memo: '잔액 입금'
+      companyId, partnerId: student.id, paymentDate: '2026-09-25',
+      amount: 346500, method: '계좌이체', memo: '잔액 입금'
     });
     assert.equal(full.allocations[0].status, 'PAID');
     assert.equal(full.outstanding, 0);
-    invariantBalance(db, companyId, daeyang.id);
+    invariantBalance(db, companyId, student.id);
 
     // 9. 대시보드: KPI 1원 정확·TOP5 정렬/완납 제외·최근 5건 최신순
     const summary = dashboard.getDashboardSummary({ companyId, baseMonth: BILLING_MONTH });
     assert.equal(summary.kpi.billedAmount, EXPECTED_TOTALS.total);
-    assert.equal(summary.kpi.paidAmount, 93500);
-    assert.equal(summary.kpi.outstandingAmount, EXPECTED_TOTALS.total - 93500);
+    assert.equal(summary.kpi.paidAmount, 363000);
+    assert.equal(summary.kpi.outstandingAmount, EXPECTED_TOTALS.total - 363000);
     const debts = summary.topDebtors.map(d => d.outstanding);
-    assert.deepEqual(debts, [60500, 33000, 22000]);
-    assert.ok(!summary.topDebtors.some(d => d.partnerName === '대양공업'));
+    assert.deepEqual(debts, [352000, 275000, 33000]);
+    assert.ok(!summary.topDebtors.some(d => d.partnerName === '김민수'));
     assert.equal(summary.recentInvoices.length, 4);
     const dates = summary.recentInvoices.map(i => i.issueDate);
     assert.deepEqual([...dates].sort().reverse(), dates);

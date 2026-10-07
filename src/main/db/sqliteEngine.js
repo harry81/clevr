@@ -19,9 +19,23 @@ function openDatabase(dbPath = ':memory:') {
   return db;
 }
 
+function hasColumn(db, table, column) {
+  // PRAGMA table_info 는 바인딩 불가 → 테이블명은 하드코딩 리터럴(주입 없음)
+  return db.prepare(`PRAGMA table_info(${table})`).all().some(c => c.name === column);
+}
+
+function migrateSchema(db) {
+  if (!hasColumn(db, 'partners', 'is_active')) {
+    // 기존 행은 상수 기본값 1(재원)로 채워진다.
+    db.exec('ALTER TABLE partners ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;');
+  }
+  return db;
+}
+
 function applySchema(db) {
   const sql = fs.readFileSync(SCHEMA_PATH, 'utf-8');
   db.exec(sql);
+  migrateSchema(db);
   return db;
 }
 

@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS partners (
   tel                TEXT,
   billing_day        TEXT,
   default_price_json TEXT,
+  is_active          INTEGER NOT NULL DEFAULT 1,   -- 1=재원, 0=퇴원
   created_at         TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE (company_id, partner_code)
 );

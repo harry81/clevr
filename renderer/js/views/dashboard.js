@@ -50,7 +50,7 @@ window.App.views.dashboard = {
           <div class="sme-panel"><h3>거래처별 미수 잔액 TOP 5</h3>
             ${topDebtors.length ? `<table class="sme-table"><tbody>
               ${topDebtors.map((t) => `<tr><td>${App.esc(t.partnerName)}</td><td class="num">${App.won(t.outstanding)}</td>
-                <td><button class="sme-link" data-ledger="${App.esc(t.partnerId)}">원장 바로가기</button></td></tr>`).join('')}
+                <td><button class="sme-link" data-ledger="${App.esc(t.partnerId)}">납부 명세서 바로가기</button></td></tr>`).join('')}
               </tbody></table>` : '<p class="sme-empty">미수금이 없습니다.</p>'}</div>
         </div>`;
 

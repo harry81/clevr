@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { execFileSync } = require('node:child_process');
 
-// T06 제품 내장형 바이럴 게이트: 원장 인쇄물 하단 1줄 마이크로 푸터(무료 오픈소스 ERP + releases/latest).
+// T06 제품 내장형 바이럴 게이트: 명세서 인쇄물 하단 1줄 마이크로 푸터(무료 청구도우미 + releases/latest).
 const ROOT = path.join(__dirname, '..', '..', '..');
 const LEDGER_JS = path.join(ROOT, 'renderer', 'js', 'views', 'ledger.js');
 const RELEASES_URL = 'https://github.com/harry81/clevr/releases/latest';
@@ -49,12 +49,20 @@ test('T06 watermark: 인쇄 HTML 하단에 1줄 마이크로 푸터가 포함된
   const ledger = loadLedger();
   const html = ledger.printDoc(SAMPLE_VIEW);
   assert.ok(html.includes('sme-print-footer'), 'sme-print-footer 클래스 없음');
-  assert.ok(html.indexOf('본 문서는 10인 이하') > html.indexOf('</table>'), '푸터가 본문(</table>) 뒤 하단에 없음');
+  assert.ok(html.indexOf('본 문서는 1인 사업자') > html.indexOf('</table>'), '푸터가 본문(</table>) 뒤 하단에 없음');
   assert.ok(html.includes(RELEASES_URL), 'releases/latest 링크 없음');
-  assert.ok(html.includes('SME-ERP'), 'SME-ERP 브랜드 없음');
-  assert.ok(html.includes('오픈소스'), '오픈소스 안내 없음');
+  assert.ok(html.includes('청구도우미'), '청구도우미 브랜드 없음');
   assert.ok(html.includes('무료'), '무료 안내 없음');
   assert.ok(html.includes('회원가입'), '회원가입 없음 안내 문구 없음');
+});
+
+test('T3 명세서 용어: printDoc 제목/잔액 라벨이 납부 명세서 계열', () => {
+  const ledger = loadLedger();
+  const html = ledger.printDoc(SAMPLE_VIEW);
+  assert.ok(html.includes('납부 명세서 / 영수증'), '납부 명세서 / 영수증 제목 없음');
+  assert.ok(html.includes('남은 미납액'), '남은 미납액 라벨 없음');
+  assert.ok(!html.includes('차인지급잔액'), '차인지급잔액 잔존');
+  assert.ok(!html.includes('거래처별 거래 원장'), '거래처별 거래 원장 잔존');
 });
 
 test('T06 watermark: 외부 라이브러리 0건 (CDN/require 없음)', () => {

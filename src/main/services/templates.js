@@ -4,54 +4,56 @@ const { normalizePriceTable } = require('./partnerService');
 const BIZ_NO_RE = /^\d{3}-\d{2}-\d{5}$/;
 
 const TEMPLATE_ITEMS = [
-  { itemName: '정밀가공', unitPrice: 50000 },
-  { itemName: '밀링가공', unitPrice: 35000 },
-  { itemName: '레이저절단', unitPrice: 20000 }
+  { itemName: '수강료', unitPrice: 300000 },
+  { itemName: '교재비', unitPrice: 30000 },
+  { itemName: '기타회비', unitPrice: 20000 }
 ];
 
 const TEMPLATE_PARTNERS = [
   {
     partnerCode: 'P0001',
-    partnerName: '대양공업',
-    bizNo: '111-22-33333',
-    ceoName: '김대양',
-    bizType: '제조업',
-    bizItem: '금속가공',
-    tel: '054-111-2222',
+    partnerName: '김민수',
+    bizNo: null,
+    ceoName: '김민수',
+    bizType: '교육',
+    bizItem: '수강',
+    tel: '010-1111-2222',
     priceTable: [
-      { itemName: '정밀가공', unitPrice: 50000 },
-      { itemName: '밀링가공', unitPrice: 35000 }
+      { itemName: '수강료', unitPrice: 300000 },
+      { itemName: '교재비', unitPrice: 30000 }
     ]
   },
   {
     partnerCode: 'P0002',
-    partnerName: '한일금속',
-    bizNo: '222-33-44444',
-    ceoName: '이한일',
-    bizType: '제조업',
-    bizItem: '판금가공',
-    tel: '054-222-3333',
+    partnerName: '박서연',
+    bizNo: null,
+    ceoName: '박서연',
+    bizType: '교육',
+    bizItem: '수강',
+    tel: '010-2222-3333',
     priceTable: [
-      { itemName: '레이저절단', unitPrice: 20000 }
+      { itemName: '수강료', unitPrice: 250000 }
     ]
   },
   {
     partnerCode: 'P0003',
-    partnerName: '태성정밀',
-    bizNo: '333-44-55555',
-    ceoName: '박태성',
-    bizType: '제조업',
-    bizItem: '정밀부품',
-    tel: '054-333-4444',
+    partnerName: '이준호',
+    bizNo: null,
+    ceoName: '이준호',
+    bizType: '교육',
+    bizItem: '수강',
+    tel: '010-3333-4444',
     priceTable: [
-      { itemName: '정밀가공', unitPrice: 55000 }
+      { itemName: '수강료', unitPrice: 300000 },
+      { itemName: '기타회비', unitPrice: 20000 }
     ]
   }
 ];
 
 // 시드 상수 로드 시점 검증 — 잘못된 템플릿은 조용히 주입되지 않고 즉시 실패
+// 학원생은 bizNo가 선택이므로, 값이 있을 때만 형식을 검사한다.
 for (const p of TEMPLATE_PARTNERS) {
-  if (!BIZ_NO_RE.test(p.bizNo)) throw new Error(`템플릿 거래처 사업자번호 형식 오류: ${p.partnerName}`);
+  if (p.bizNo && !BIZ_NO_RE.test(p.bizNo)) throw new Error(`템플릿 거래처 사업자번호 형식 오류: ${p.partnerName}`);
   normalizePriceTable(p.priceTable);
   if (!p.priceTable.length) throw new Error(`템플릿 거래처 단가표 비어 있음: ${p.partnerName}`);
 }

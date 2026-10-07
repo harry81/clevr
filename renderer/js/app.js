@@ -65,12 +65,12 @@ window.App = (() => {
     const nav = (id, label) => `<button data-nav="${id}" class="${v === id ? 'active' : ''}">${label}</button>`;
     return `
       <header class="sme-top">
-        <div class="sme-logo">SME-ERP</div>
+        <div class="sme-logo">청구도우미</div>
         <nav class="sme-nav">
           ${nav('dashboard', '대시보드')}
-          ${nav('partners', '거래처')}
+          ${nav('partners', '회원/거래처')}
           ${nav('invoices', '청구서')}
-          ${nav('ledger', '입금/원장')}
+          ${nav('ledger', '입금/명세서')}
         </nav>
         <div class="sme-user"><span>${esc(state.user ? state.user.username : '')}</span><button class="sme-btn ghost" data-act="logout">로그아웃</button></div>
       </header>
@@ -110,7 +110,7 @@ window.App = (() => {
       await render();
     } catch (e) {
       document.getElementById('app').innerHTML =
-        `<div class="sme-center"><div class="sme-card"><p class="sme-brand">SME-ERP</p><p class="sme-error">${esc(e.message)}</p></div></div>`;
+        `<div class="sme-center"><div class="sme-card"><p class="sme-brand">청구도우미</p><p class="sme-error">${esc(e.message)}</p></div></div>`;
     }
   }
 

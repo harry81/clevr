@@ -163,6 +163,41 @@ test('createInvoiceBatch: 다중 품목 단가표 전 행 합산 (50000+35000)',
   assert.equal(ledger.running_balance, 93500);
 });
 
+// ---------- T3 퇴원(비활성) 배치 제외 ----------
+test('T3: 전체 배치에서 퇴원생 제외 + skippedPartnerIds 집계', () => {
+  const { partners, invoices, companyId } = setup();
+  addPartner(partners, companyId, '재원', 10000);
+  const off = addPartner(partners, companyId, '퇴원', 20000);
+  partners.setActive(companyId, off.id, false);
+  const result = invoices.createInvoiceBatch({ companyId, billingMonth: '2026-09' });
+  assert.equal(result.summary.totalCount, 1);
+  assert.deepEqual(result.created.map(i => i.partnerName), ['재원']);
+  assert.ok(result.summary.skippedPartnerIds.includes(off.id), '퇴원생이 skippedPartnerIds에 없음');
+  assert.equal(result.summary.skippedCount, 1);
+});
+
+test('T3: 명시 partnerIds에 퇴원생 포함 → throw 아님, skip', () => {
+  const { partners, invoices, companyId } = setup();
+  const on = addPartner(partners, companyId, '재원', 10000);
+  const off = addPartner(partners, companyId, '퇴원', 20000);
+  partners.setActive(companyId, off.id, false);
+  const result = invoices.createInvoiceBatch({ companyId, billingMonth: '2026-09', partnerIds: [on.id, off.id] });
+  assert.equal(result.summary.totalCount, 1);
+  assert.equal(result.created[0].partnerId, on.id);
+  assert.ok(result.summary.skippedPartnerIds.includes(off.id));
+});
+
+test('T3: 퇴원 제외 후에도 활성 파트너 채번 연속', () => {
+  const { partners, invoices, companyId } = setup();
+  addPartner(partners, companyId, '재원A', 10000);
+  const off = addPartner(partners, companyId, '퇴원B', 20000);
+  addPartner(partners, companyId, '재원C', 30000);
+  partners.setActive(companyId, off.id, false);
+  const result = invoices.createInvoiceBatch({ companyId, billingMonth: '2026-09' });
+  assert.deepEqual(result.created.map(i => i.invoiceNo), ['INV-202609-0001', 'INV-202609-0002']);
+  assert.deepEqual(result.created.map(i => i.partnerName), ['재원A', '재원C']);
+});
+
 test('createInvoiceBatch: 0원 품목 포함 합산 (10000+0)', () => {
   const { partners, invoices, companyId } = setup();
   partners.savePartner(companyId, {
@@ -175,6 +210,36 @@ test('createInvoiceBatch: 0원 품목 포함 합산 (10000+0)', () => {
   const result = invoices.createInvoiceBatch({ companyId, billingMonth: '2026-09' });
   assert.equal(result.summary.totalCount, 1);
   assert.equal(result.created[0].supplyAmount, 10000);
+  assert.equal(result.created[0].vatAmount, 1000);
+  assert.equal(result.created[0].totalAmount, 11000);
+});
+
+// ---------- T5 면세(VAT 0%) ----------
+test('T5: isTaxExempt=true → vat 0·총액=공급가액·원장 vat_amount 0', () => {
+  const { db, partners, invoices, companyId } = setup();
+  const p = partners.savePartner(companyId, {
+    partnerName: '면세학원생',
+    priceTable: [{ itemName: '수강료', unitPrice: 300000 }]
+  });
+  const result = invoices.createInvoiceBatch({ companyId, billingMonth: '2026-09', isTaxExempt: true });
+  assert.equal(result.summary.totalCount, 1);
+  assert.equal(result.summary.supplyTotal, 300000);
+  assert.equal(result.summary.vatTotal, 0);
+  assert.equal(result.created[0].vatAmount, 0);
+  assert.equal(result.created[0].totalAmount, 300000);
+  const inv = db.prepare('SELECT vat_amount AS v, total_amount AS t FROM invoices WHERE partner_id = ?').get(p.id);
+  assert.equal(inv.v, 0);
+  assert.equal(inv.t, 300000);
+  const le = db.prepare("SELECT * FROM ledger_entries WHERE partner_id = ? AND entry_type = '매출청구'").get(p.id);
+  assert.equal(le.vat_amount, 0);
+  assert.equal(le.supply_amount, 300000);
+  assert.equal(le.running_balance, 300000);
+});
+
+test('T5: isTaxExempt 미지정/false → 현행 과세 유지', () => {
+  const { partners, invoices, companyId } = setup();
+  addPartner(partners, companyId, '과세', 10000);
+  const result = invoices.createInvoiceBatch({ companyId, billingMonth: '2026-09', isTaxExempt: false });
   assert.equal(result.created[0].vatAmount, 1000);
   assert.equal(result.created[0].totalAmount, 11000);
 });

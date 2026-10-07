@@ -1,9 +1,10 @@
-const { createPartnerService } = require('./partnerService');
+const { createPartnerService, normalizeBizNo } = require('./partnerService');
 
 // T09 Magic Import — 클립보드 TSV/CSV 텍스트를 거래처 행으로 파싱하고 일괄 저장한다.
-// 기본 컬럼 순서: 거래처명, 사업자번호, 대표자, 연락처, 품목명, 단가.
-// 첫 행에 헤더 키워드(상호/거래처/사업자)가 있으면 헤더로 보고 건너뛴다(없으면 위치 기반).
-const HEADER_KEYWORDS = ['상호', '거래처', '사업자'];
+// 기본 컬럼 순서: 거래처명, 연락처/식별번호, 대표자, 연락처, 품목명, 단가.
+// 첫 행에 헤더 키워드가 있으면 헤더로 보고 건너뛴다(없으면 위치 기반).
+// '사업자번호'(구)와 '연락처 / 식별번호'(신) 헤더를 모두 수용한다.
+const HEADER_KEYWORDS = ['상호', '거래처', '사업자', '회원', '연락처', '식별'];
 
 function detectDelimiter(line) {
   return line.includes('\t') ? '\t' : ',';
@@ -16,13 +17,6 @@ function cellAt(cells, idx) {
 function isHeaderRow(line) {
   const cells = line.split(detectDelimiter(line)).map((s) => s.trim());
   return cells.some((c) => HEADER_KEYWORDS.some((k) => c.includes(k)));
-}
-
-function normalizeBizNo(value) {
-  const s = String(value ?? '').trim();
-  if (!s) return null;
-  const d = s.replace(/\D/g, '');
-  return d.length === 10 ? `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}` : s;
 }
 
 function parseUnitPrice(value) {

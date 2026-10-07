@@ -29,23 +29,29 @@ function createInvoiceService(db) {
     return db.prepare("SELECT date(?, 'start of month', '+1 month', '-1 day') AS d").get(`${billingMonth}-01`).d;
   }
 
-  function createInvoiceBatch({ companyId, billingMonth, partnerIds } = {}) {
+  function createInvoiceBatch({ companyId, billingMonth, partnerIds, isTaxExempt } = {}) {
     if (!companyId) throw new Error('companyId가 필요합니다');
     if (!/^\d{4}-\d{2}$/.test(billingMonth || '')) {
       throw new Error('청구년월은 YYYY-MM 형식이어야 합니다');
     }
 
+    const explicit = Array.isArray(partnerIds) && partnerIds.length > 0;
     let targets;
-    if (Array.isArray(partnerIds) && partnerIds.length > 0) {
+    if (explicit) {
       targets = partnerIds.map(id =>
         db.prepare('SELECT * FROM partners WHERE company_id = ? AND id = ?').get(companyId, id)
       );
     } else {
-      targets = db.prepare('SELECT * FROM partners WHERE company_id = ?').all(companyId);
+      targets = db.prepare('SELECT * FROM partners WHERE company_id = ? AND is_active = 1').all(companyId);
     }
 
     const created = [];
     const skipped = [];
+    // 전체 배치는 SQL에서 비활성(퇴원)을 대상에서 제외하므로, 퇴원생을 skipped에 별도 집계한다.
+    if (!explicit) {
+      const inactive = db.prepare('SELECT id FROM partners WHERE company_id = ? AND is_active = 0').all(companyId);
+      for (const r of inactive) skipped.push(r.id);
+    }
     const issueDate = issueDateOf(billingMonth);
 
     db.exec('BEGIN IMMEDIATE');
@@ -68,13 +74,14 @@ function createInvoiceService(db) {
 
       for (const p of targets) {
         if (!p) throw new Error('존재하지 않는 거래처가 포함되어 있습니다');
+        if (p.is_active === 0) { skipped.push(p.id); continue; } // 명시 partnerIds의 퇴원생은 skip
         if (issued.has(p.id)) { skipped.push(p.id); continue; }
         const priceTable = p.default_price_json ? JSON.parse(p.default_price_json) : [];
         const supply = (Array.isArray(priceTable) ? priceTable : [])
           .reduce((acc, it) => acc + (Number(it.unitPrice) || 0), 0);
         if (!(supply > 0)) { skipped.push(p.id); continue; }
 
-        const vat = computeVat(supply);
+        const vat = isTaxExempt === true ? 0 : computeVat(supply); // T5 면세(교육사업 등) → VAT 0%
         const total = supply + vat;
         const invoiceNo = `${prefix}${String(seq).padStart(4, '0')}`;
         const invoiceId = crypto.randomUUID();

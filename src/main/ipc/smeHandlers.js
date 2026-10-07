@@ -123,7 +123,7 @@ function createSmeHandlers({ db, session }) {
     },
     'sme:partners:list': (payload) => {
       need(payload, 'companyId');
-      return partners.listPartners(payload.companyId, payload.keyword || '');
+      return partners.listPartners(payload.companyId, payload.keyword || '', { status: payload.status || 'active' });
     },
     'sme:partners:get': (payload) => {
       need(payload, 'companyId', 'partnerId');
@@ -140,6 +140,11 @@ function createSmeHandlers({ db, session }) {
       const result = partners.deletePartner(payload.companyId, payload.partnerId);
       return { deleted: result.ok };
     },
+    'sme:partners:setActive': (payload) => {
+      need(payload, 'companyId', 'partnerId');
+      if (typeof payload.isActive !== 'boolean') throw new Error('isActive는 true/false여야 합니다');
+      return partners.setActive(payload.companyId, payload.partnerId, payload.isActive);
+    },
     'sme:partners:parseBulk': (payload) => bulkImport.parseText(payload ? payload.text : ''),
     'sme:partners:saveBulk': (payload) => {
       need(payload, 'companyId', 'rows');
@@ -151,7 +156,8 @@ function createSmeHandlers({ db, session }) {
       return invoices.createInvoiceBatch({
         companyId: payload.companyId,
         billingMonth: payload.billingMonth,
-        partnerIds: payload.partnerIds
+        partnerIds: payload.partnerIds,
+        isTaxExempt: payload.isTaxExempt === true
       });
     },
     'sme:invoices:updateStatus': updateInvoiceStatus,

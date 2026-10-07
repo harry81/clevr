@@ -79,11 +79,38 @@ test('completeOnboarding: 관리자 비밀번호가 단방향 해시로 저장',
   db.close();
 });
 
-test('completeOnboarding: 사업자등록번호 형식 오류 시 예외', () => {
+test('completeOnboarding: bizNo 빈값 허용 (1인 사업자/학원)', () => {
   const db = createDatabase(':memory:');
-  const bad = validData();
-  bad.company.bizNo = '1234567890';
-  assert.throws(() => completeOnboarding(db, bad), /사업자등록번호/i);
+  const data = validData();
+  data.company.bizNo = '';
+  const result = completeOnboarding(db, data);
+  const company = db.prepare('SELECT * FROM companies WHERE id = ?').get(result.companyId);
+  assert.equal(company.biz_no, '');
+  assert.equal(company.company_name, '한빛정밀');
+  db.close();
+});
+
+// T6 Advisory #1 — 회사 bizNo 정규화 및 비매칭(전화·임의 식별자) 허용
+test('T6: 비매칭 bizNo(전화·임의 식별자) 형식 검사 면제 + 원문 저장', () => {
+  const db = createDatabase(':memory:');
+  const phone = validData();
+  phone.company.bizNo = '010-1234-5678';
+  const r1 = completeOnboarding(db, phone);
+  assert.equal(db.prepare('SELECT biz_no FROM companies WHERE id = ?').get(r1.companyId).biz_no, '010-1234-5678');
+
+  const arbitrary = validData();
+  arbitrary.company.bizNo = '학원-001';
+  const r2 = completeOnboarding(db, arbitrary);
+  assert.equal(db.prepare('SELECT biz_no FROM companies WHERE id = ?').get(r2.companyId).biz_no, '학원-001');
+  db.close();
+});
+
+test('T6: 하이픈 없는 10자리 → 하이픈 정규화 저장', () => {
+  const db = createDatabase(':memory:');
+  const data = validData();
+  data.company.bizNo = '1234567890';
+  const result = completeOnboarding(db, data);
+  assert.equal(db.prepare('SELECT biz_no FROM companies WHERE id = ?').get(result.companyId).biz_no, '123-45-67890');
   db.close();
 });
 
@@ -112,31 +139,31 @@ test('completeOnboarding: 트랜잭션 원자성 — 잘못된 품목 시 전체
   db.close();
 });
 
-// ---------- T3' A1 온보딩 템플릿 ----------
-test('T3 템플릿: 상수 유효성 — 사업자번호 형식·단가표·코드 유일', () => {
+// ---------- T4 학원화 온보딩 템플릿 ----------
+test('T4 템플릿: 학원 청구항목·학원생 샘플 유효성', () => {
   const { TEMPLATE_ITEMS, TEMPLATE_PARTNERS } = require('../../../src/main/services/templates');
   const { BIZ_NO_RE } = require('../../../src/main/services/onboardingService');
   const { normalizePriceTable } = require('../../../src/main/services/partnerService');
   assert.equal(TEMPLATE_PARTNERS.length, 3);
-  assert.deepEqual(TEMPLATE_PARTNERS.map(p => p.partnerName), ['대양공업', '한일금속', '태성정밀']);
+  assert.deepEqual(TEMPLATE_PARTNERS.map(p => p.partnerName), ['김민수', '박서연', '이준호']);
   for (const p of TEMPLATE_PARTNERS) {
-    assert.ok(BIZ_NO_RE.test(p.bizNo), `사업자번호 형식 오류: ${p.partnerName}`);
+    assert.ok(!p.bizNo || BIZ_NO_RE.test(p.bizNo), `사업자번호 형식 오류: ${p.partnerName}`);
     assert.ok(normalizePriceTable(p.priceTable).length > 0, `단가표 비어 있음: ${p.partnerName}`);
   }
-  assert.deepEqual(TEMPLATE_ITEMS.map(i => i.itemName), ['정밀가공', '밀링가공', '레이저절단']);
+  assert.deepEqual(TEMPLATE_ITEMS.map(i => i.itemName), ['수강료', '교재비', '기타회비']);
 });
 
-test('applyTemplate:true → 거래처 3건+단가표, 대표 품목 주입', () => {
+test('T4: applyTemplate:true → 학원생 3명+수강료 단가표, 대표 항목 주입', () => {
   const db = createDatabase(':memory:');
   const result = completeOnboarding(db, validData(), { applyTemplate: true });
   assert.equal(result.templateApplied, true);
   const partners = db.prepare('SELECT partner_name AS n, default_price_json AS j FROM partners WHERE company_id = ? ORDER BY partner_code').all(result.companyId);
-  assert.deepEqual(partners.map(p => p.n), ['대양공업', '한일금속', '태성정밀']);
+  assert.deepEqual(partners.map(p => p.n), ['김민수', '박서연', '이준호']);
   for (const p of partners) {
     assert.ok(JSON.parse(p.j).length > 0, `단가표 비어 있음: ${p.n}`);
   }
   const itemNames = db.prepare('SELECT item_name AS n FROM items WHERE company_id = ?').all(result.companyId).map(r => r.n);
-  for (const name of ['정밀가공', '밀링가공', '레이저절단', '정밀가공A', '정밀가공B']) {
+  for (const name of ['수강료', '교재비', '기타회비', '정밀가공A', '정밀가공B']) {
     assert.ok(itemNames.includes(name), `품목 누락: ${name}`);
   }
   db.close();

@@ -1,6 +1,6 @@
 const crypto = require('node:crypto');
 const { hashPassword } = require('../../shared/security/hasher');
-const { normalizePriceTable } = require('./partnerService');
+const { normalizePriceTable, normalizeBizNo } = require('./partnerService');
 const { TEMPLATE_ITEMS, TEMPLATE_PARTNERS } = require('./templates');
 
 const BIZ_NO_RE = /^\d{3}-\d{2}-\d{5}$/;
@@ -15,10 +15,8 @@ function validateOnboardingData(data) {
   const { company, admin } = data;
   if (!company || typeof company !== 'object') throw new Error('company 정보가 필요합니다');
   if (!company.companyName) throw new Error('회사명이 필요합니다');
-  if (!company.bizNo) throw new Error('사업자등록번호가 필요합니다');
-  if (!BIZ_NO_RE.test(company.bizNo)) {
-    throw new Error('사업자등록번호 형식이 올바르지 않습니다 (예: 123-45-67890)');
-  }
+  // 1인 사업자/학원 친화: bizNo는 선택이며 형식 검사를 강제하지 않는다.
+  // 하이픈 없는 10자리는 normalizeBizNo로 정규화하고, 전화·임의 식별자는 원문을 허용한다.
   if (!admin || typeof admin !== 'object') throw new Error('관리자 계정 정보가 필요합니다');
   if (!admin.username) throw new Error('관리자 아이디가 필요합니다');
   if (!admin.password) throw new Error('관리자 비밀번호가 필요합니다');
@@ -46,7 +44,7 @@ function completeOnboarding(db, data, options = {}) {
   try {
     db.prepare(`INSERT INTO companies (id, company_name, biz_no, ceo_name, biz_type, biz_item, address, tel)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(companyId, company.companyName, company.bizNo, company.ceoName || null,
+      .run(companyId, company.companyName, normalizeBizNo(company.bizNo) || '', company.ceoName || null,
         company.bizType || null, company.bizItem || null, company.address || null, company.tel || null);
 
     db.prepare(`INSERT INTO users (id, company_id, username, password_hash, salt, role)

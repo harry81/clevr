@@ -126,12 +126,53 @@ function createPartnerService(db) {
     return getPartner(companyId, id);
   }
 
+  // T09 Magic Import — 행 목록을 일괄 등록. 중복 bizNo는 skip(upsert 아님), 행별 오류는 errors로 수집.
+  function savePartnersBulk(companyId, rows) {
+    if (!companyId) throw new Error('companyId가 필요합니다');
+    if (!Array.isArray(rows)) throw new Error('rows는 배열이어야 합니다');
+    const created = [];
+    const skipped = [];
+    const errors = [];
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const insert = db.prepare(
+        `INSERT INTO partners (id, company_id, partner_code, partner_name, biz_no, ceo_name, biz_type, biz_item, email, tel, billing_day, default_price_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      );
+      for (const row of rows) {
+        try {
+          if (!row || typeof row !== 'object' || !row.partnerName) {
+            throw new Error('거래처명(partnerName)이 필요합니다');
+          }
+          const priceTable = normalizePriceTable(row.priceTable || []);
+          const bizNo = row.bizNo || null;
+          if (findDuplicateBizNo(companyId, bizNo)) { skipped.push(row.partnerName); continue; }
+          const id = crypto.randomUUID();
+          const partnerCode = row.partnerCode || nextPartnerCode(companyId);
+          insert.run(
+            id, companyId, partnerCode, row.partnerName, bizNo,
+            row.ceoName || null, row.bizType || null, row.bizItem || null,
+            row.email || null, row.tel || null, row.billingDay || null, JSON.stringify(priceTable)
+          );
+          created.push(row.partnerName);
+        } catch (err) {
+          errors.push({ partnerName: row && row.partnerName ? row.partnerName : null, message: err.message });
+        }
+      }
+      db.exec('COMMIT');
+    } catch (err) {
+      try { db.exec('ROLLBACK'); } catch {}
+      throw err;
+    }
+    return { created: created.length, skipped: skipped.length, errors };
+  }
+
   function deletePartner(companyId, partnerId) {
     const result = db.prepare('DELETE FROM partners WHERE id = ? AND company_id = ?').run(partnerId, companyId);
     return { ok: result.changes > 0 };
   }
 
-  return { getPartner, listPartners, savePartner, deletePartner };
+  return { getPartner, listPartners, savePartner, savePartnersBulk, deletePartner };
 }
 
 module.exports = { createPartnerService, normalizePriceTable };

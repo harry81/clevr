@@ -27,9 +27,77 @@ function printDoc(view) {
     <tbody>${rows}</tbody></table>${watermarkFooter()}</body></html>`;
 }
 
+// T11 카톡 전송용 이미지 — 지정 6필드만 추출(순수).
+function extractReceiptFields(view) {
+  const partner = (view && view.partner) || {};
+  const summary = (view && view.summary) || {};
+  const entries = view && Array.isArray(view.entries) ? view.entries : [];
+  const last = entries.length ? entries[entries.length - 1] : null;
+  return {
+    partnerName: partner.partnerName || '',
+    ceoName: partner.ceoName || '',
+    date: (last && last.entryDate) || '',
+    supplyAmount: summary.billedTotal || 0,
+    paidAmount: summary.paidTotal || 0,
+    balance: summary.outstanding || 0,
+  };
+}
+
+// 데이터URL allowlist: PNG base64만 허용 (main 프로세스와 동일 규칙, 방어적 사전 검증)
+const IMAGE_DATA_URL_RE = /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/;
+function isAllowedImageDataUrl(dataUrl) {
+  return typeof dataUrl === 'string' && IMAGE_DATA_URL_RE.test(dataUrl);
+}
+
+// canvas 2D 수동 렌더 (외부 lib 0)
+function buildReceiptImage(fields) {
+  const W = 640;
+  const H = 420;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#0f172a';
+  ctx.font = 'bold 26px "Malgun Gothic", sans-serif';
+  ctx.fillText('거래처 원장 요약', 32, 56);
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.beginPath();
+  ctx.moveTo(32, 76);
+  ctx.lineTo(W - 32, 76);
+  ctx.stroke();
+
+  const rows = [
+    ['상호명', fields.partnerName || ''],
+    ['대표자', fields.ceoName || '-'],
+    ['거래일자', fields.date || '-'],
+    ['공급가액', window.App.won(fields.supplyAmount)],
+    ['입금액', window.App.won(fields.paidAmount)],
+    ['차인지급잔액', window.App.won(fields.balance)],
+  ];
+  let y = 130;
+  for (const [label, value] of rows) {
+    ctx.fillStyle = '#64748b';
+    ctx.font = '18px "Malgun Gothic", sans-serif';
+    ctx.fillText(label, 40, y);
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 18px "Malgun Gothic", sans-serif';
+    ctx.fillText(String(value), 220, y);
+    y += 44;
+  }
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '12px "Malgun Gothic", sans-serif';
+  ctx.fillText('SME-ERP · 무료 오픈소스 ERP', 40, H - 28);
+  return canvas.toDataURL('image/png');
+}
+
 window.App.views.ledger = {
   title: '입금 / 거래처 원장',
   printDoc,
+  extractReceiptFields,
+  isAllowedImageDataUrl,
+  buildReceiptImage,
   async render(root, params) {
     const App = window.App;
     const companyId = App.state.companyId;
@@ -105,6 +173,7 @@ window.App.views.ledger = {
         <div class="sme-toolbar">
           <button class="sme-btn" id="pay-go">입금 반영</button>
           <button class="sme-btn ghost" id="led-print">원장 인쇄(A4)</button>
+          <button class="sme-btn ghost" id="led-share" ${entries.length ? '' : 'disabled'}>카톡 전송용 이미지 복사</button>
           <span class="sme-error" id="pay-error" style="margin:0"></span>
         </div>
         <table class="sme-table"><thead><tr><th>일자</th><th>구분</th><th class="num">공급가액</th>
@@ -139,6 +208,16 @@ window.App.views.ledger = {
         try {
           const { path } = await App.call('print', 'html', { html: printDoc(view), fileName: `거래처원장_${partner.partnerName}` });
           App.toast(`원장 PDF 저장: ${path}`, 'ok');
+        } catch (e) {
+          App.toast(e.message, 'error');
+        }
+      });
+      box.querySelector('#led-share').addEventListener('click', async () => {
+        try {
+          const dataUrl = buildReceiptImage(extractReceiptFields(view));
+          if (!isAllowedImageDataUrl(dataUrl)) throw new Error('이미지 데이터가 올바르지 않습니다');
+          await App.call('clipboard', 'copyImage', { dataUrl });
+          App.toast('카톡 전송용 이미지가 복사되었습니다.', 'ok');
         } catch (e) {
           App.toast(e.message, 'error');
         }

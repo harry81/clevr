@@ -10,9 +10,11 @@ const CHANNELS = [
   'sme:onboarding:getStatus', 'sme:onboarding:submit',
   'sme:dashboard:getSummary',
   'sme:partners:list', 'sme:partners:get', 'sme:partners:save', 'sme:partners:delete',
+  'sme:partners:parseBulk', 'sme:partners:saveBulk',
   'sme:invoices:list', 'sme:invoices:createBatch', 'sme:invoices:updateStatus',
   'sme:ledger:getPartnerLedger', 'sme:ledger:recordPayment',
   'sme:print:html',
+  'sme:clipboard:copyImage',
   'sme:app:quit'
 ];
 

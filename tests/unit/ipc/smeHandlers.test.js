@@ -9,6 +9,7 @@ const CHANNELS = [
   'sme:onboarding:getStatus', 'sme:onboarding:submit',
   'sme:dashboard:getSummary',
   'sme:partners:list', 'sme:partners:get', 'sme:partners:save', 'sme:partners:delete',
+  'sme:partners:parseBulk', 'sme:partners:saveBulk',
   'sme:invoices:list', 'sme:invoices:createBatch', 'sme:invoices:updateStatus',
   'sme:ledger:getPartnerLedger', 'sme:ledger:recordPayment'
 ];
@@ -35,7 +36,7 @@ function seedPartner(handlers, companyId, partnerName = '대양공업') {
   });
 }
 
-test('채널 레지스트리: 6그룹 15채널 고정', () => {
+test('채널 레지스트리: 6그룹 17채널 고정', () => {
   const { db, handlers } = setup();
   assert.deepEqual(Object.keys(handlers).sort(), CHANNELS.slice().sort());
 });

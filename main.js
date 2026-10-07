@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu, shell, dialog, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, shell, dialog, nativeImage, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -210,10 +210,26 @@ function registerSmeIpc() {
     ipcMain.handle(channel, async (event, payload) => fn(payload));
   }
   ipcMain.handle('sme:print:html', async (event, payload) => printHtml(payload || {}));
+  ipcMain.handle('sme:clipboard:copyImage', async (event, payload) => copyImageToClipboard(payload || {}));
   ipcMain.handle('sme:app:quit', () => {
     isQuitting = true;
     app.quit();
   });
+}
+
+// ---------------- T11: 원장 이미지 클립보드 복사 (신뢰 경계 — PNG base64만 허용) ----------------
+function copyImageToClipboard({ dataUrl } = {}) {
+  if (typeof dataUrl !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(dataUrl)) {
+    return { ok: false, message: '지원하지 않는 이미지 형식입니다' };
+  }
+  try {
+    const image = nativeImage.createFromDataURL(dataUrl);
+    if (image.isEmpty()) return { ok: false, message: '이미지를 만들 수 없습니다' };
+    clipboard.writeImage(image);
+    return { ok: true, data: { copied: true } };
+  } catch (err) {
+    return { ok: false, message: err.message };
+  }
 }
 
 // ---------------- 출력관리: 인쇄 (도메인 무관 셸 유틸리티, Phase 3에서 사용) ----------------

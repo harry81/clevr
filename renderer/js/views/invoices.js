@@ -1,6 +1,21 @@
 /* 청구서 일괄등록(화면 ③) — 프리뷰 모달 → 원클릭 일괄 생성 */
+
+// 청구 1건당 엑셀 수작업 절약 계수: 5.5분/건 (planner 확정).
+// UI 가독성을 위해 5분 단위로 반올림한다. (예: 38건 × 5.5분 = 209분 → 210분 = 3시간 30분)
+const SAVING_MINUTES_PER_INVOICE = 5.5;
+
+function estimateSavingTime(count) {
+  const n = Number.isFinite(Number(count)) ? Math.max(0, Math.trunc(Number(count))) : 0;
+  const minutes = Math.round((n * SAVING_MINUTES_PER_INVOICE) / 5) * 5;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const label = h && m ? `${h}시간 ${m}분` : h ? `${h}시간` : `${m}분`;
+  return { count: n, minutes, label };
+}
+
 window.App.views.invoices = {
   title: '매출 청구서',
+  estimateSavingTime,
   async render(root, params) {
     const App = window.App;
     const companyId = App.state.companyId;
@@ -80,11 +95,26 @@ window.App.views.invoices = {
           const { summary } = await App.call('invoices', 'createBatch', { companyId, billingMonth, partnerIds: ids });
           App.closeModal();
           App.toast(`청구서 ${summary.totalCount}건 생성 (공급가액 ${App.won(summary.supplyTotal)}, 부가세 ${App.won(summary.vatTotal)}${summary.skippedCount ? `, 제외 ${summary.skippedCount}건` : ''})`, 'ok');
+          showBatchCelebration(summary);
           draw();
         } catch (e) {
           err.textContent = e.message;
         }
       });
+    }
+
+    // T10 청구 완료 도파민 모달 — 0건이면 생략, 제외 건수는 병기.
+    function showBatchCelebration(summary) {
+      if (!summary || !(summary.totalCount > 0)) return;
+      const saving = estimateSavingTime(summary.totalCount);
+      const skipped = summary.skippedCount > 0
+        ? `<p class="sme-sub">제외 ${summary.skippedCount}건 (단가표 없음 또는 이미 발행)</p>` : '';
+      const back = App.modal(`
+        <h3 style="margin-top:0">🎉 청구서 ${summary.totalCount}장 발행 완료!</h3>
+        <p>엑셀 야근 <strong>${saving.label}</strong>을 절약하셨습니다.</p>
+        ${skipped}
+        <div class="sme-row" style="margin-top:12px"><button class="sme-btn" id="celeb-ok">확인</button></div>`);
+      back.querySelector('#celeb-ok').addEventListener('click', () => App.closeModal());
     }
 
     await draw();

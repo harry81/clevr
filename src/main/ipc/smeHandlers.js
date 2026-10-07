@@ -1,6 +1,7 @@
 const { verifyPassword } = require('../../shared/security/hasher');
 const { isOnboardingNeeded, completeOnboarding } = require('../services/onboardingService');
 const { createPartnerService } = require('../services/partnerService');
+const { createBulkImportService } = require('../services/bulkImportService');
 const { createInvoiceService } = require('../services/invoiceService');
 const { createLedgerService } = require('../services/ledgerService');
 const { createDashboardService } = require('../services/dashboardService');
@@ -51,6 +52,7 @@ function toInvoice(row) {
 
 function createSmeHandlers({ db, session }) {
   const partners = createPartnerService(db);
+  const bulkImport = createBulkImportService(db);
   const invoices = createInvoiceService(db);
   const ledger = createLedgerService(db);
   const dashboard = createDashboardService(db);
@@ -137,6 +139,11 @@ function createSmeHandlers({ db, session }) {
       need(payload, 'companyId', 'partnerId');
       const result = partners.deletePartner(payload.companyId, payload.partnerId);
       return { deleted: result.ok };
+    },
+    'sme:partners:parseBulk': (payload) => bulkImport.parseText(payload ? payload.text : ''),
+    'sme:partners:saveBulk': (payload) => {
+      need(payload, 'companyId', 'rows');
+      return bulkImport.saveBulk(payload.companyId, payload.rows);
     },
     'sme:invoices:list': listInvoices,
     'sme:invoices:createBatch': (payload) => {

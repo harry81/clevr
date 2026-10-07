@@ -62,6 +62,7 @@ window.App.views.partners = {
         <div class="sme-toolbar">
           <input id="pt-search" placeholder="거래처명 또는 사업자번호 검색" value="${App.esc(keyword)}" style="min-width:260px">
           <button class="sme-btn" id="pt-new">+ 신규 거래처 등록</button>
+          <button class="sme-btn ghost" id="pt-import">엑셀 붙여넣기</button>
           <span class="sme-sub" style="margin:0">총 ${list.length}곳</span>
         </div>
         <div class="sme-panel">
@@ -86,6 +87,7 @@ window.App.views.partners = {
         search._t = setTimeout(() => { keyword = search.value.trim(); draw(); }, 250);
       });
       root.querySelector('#pt-new').addEventListener('click', () => openDrawer(null));
+      root.querySelector('#pt-import').addEventListener('click', () => openImport());
       root.querySelectorAll('[data-pid]').forEach((tr) => tr.addEventListener('click', () => {
         const found = list.find((p) => String(p.id) === String(tr.dataset.pid));
         openDrawer(found || null);
@@ -221,6 +223,63 @@ window.App.views.partners = {
             back.querySelector('#pt-del-error').textContent = e.message;
           }
         });
+      });
+    }
+
+    function openImport() {
+      let parsedRows = [];
+      let timer;
+      const back = App.modal(`
+        <h3 style="margin-top:0">엑셀 붙여넣기로 거래처 일괄 등록</h3>
+        <p class="sme-sub">엑셀에서 복사한 표를 붙여넣으세요. 컬럼 순서: 거래처명 · 사업자번호 · 대표자 · 연락처 · 품목명 · 단가 (탭/쉼표 구분)</p>
+        <textarea id="imp-text" rows="6" style="width:100%" placeholder="거래처명&#9;사업자번호&#9;대표자&#9;연락처&#9;품목명&#9;단가"></textarea>
+        <div id="imp-preview" style="margin-top:10px"></div>
+        <p class="sme-error" id="imp-error"></p>
+        <div class="sme-row" style="margin-top:12px">
+          <button class="sme-btn ghost" id="imp-cancel">닫기</button>
+          <button class="sme-btn" id="imp-ok" disabled>등록</button>
+        </div>`);
+      const ta = back.querySelector('#imp-text');
+      const preview = back.querySelector('#imp-preview');
+      const errEl = back.querySelector('#imp-error');
+      const okBtn = back.querySelector('#imp-ok');
+
+      async function doParse() {
+        errEl.textContent = '';
+        try {
+          const res = await App.call('partners', 'parseBulk', { text: ta.value });
+          parsedRows = res.rows || [];
+          const errors = res.errors || [];
+          preview.innerHTML = parsedRows.length ? `
+            <p class="sme-sub">인식 ${parsedRows.length}곳${errors.length ? ` · 오류 ${errors.length}행` : ''}</p>
+            <table class="sme-table"><thead><tr><th>거래처</th><th>사업자번호</th><th>대표자</th><th>품목/단가</th></tr></thead><tbody>
+            ${parsedRows.slice(0, 20).map((r) => `<tr><td>${App.esc(r.partnerName)}</td><td>${App.esc(r.bizNo || '')}</td>
+              <td>${App.esc(r.ceoName || '')}</td>
+              <td>${App.esc((r.priceTable || []).map((it) => `${it.itemName} ${App.won(it.unitPrice)}`).join(', '))}</td></tr>`).join('')}
+            </tbody></table>
+            ${errors.length ? `<details><summary>오류 ${errors.length}행</summary>${errors.map((e) => `<div class="sme-sub">${e.line}행: ${App.esc(e.message)}</div>`).join('')}</details>` : ''}`
+            : '<p class="sme-empty">인식된 행이 없습니다.</p>';
+          okBtn.disabled = parsedRows.length === 0;
+        } catch (e) {
+          parsedRows = [];
+          okBtn.disabled = true;
+          errEl.textContent = e.message;
+        }
+      }
+
+      ta.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(doParse, 250); });
+      ta.addEventListener('paste', () => { clearTimeout(timer); timer = setTimeout(doParse, 0); });
+      back.querySelector('#imp-cancel').addEventListener('click', () => App.closeModal());
+      okBtn.addEventListener('click', async () => {
+        errEl.textContent = '';
+        try {
+          const res = await App.call('partners', 'saveBulk', { companyId, rows: parsedRows });
+          App.closeModal();
+          App.toast(`거래처 ${res.created}곳 등록${res.skipped ? `, 중복 ${res.skipped}곳 건너뜀` : ''}${res.errors.length ? `, 오류 ${res.errors.length}건` : ''}`, 'ok');
+          draw();
+        } catch (e) {
+          errEl.textContent = e.message;
+        }
       });
     }
 

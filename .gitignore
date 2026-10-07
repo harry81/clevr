@@ -16,6 +16,7 @@ dist-electron/
 out/
 build/*
 !build/icon.ico
+!build/installer.nsh
 *.exe
 *.dmg
 *.AppImage

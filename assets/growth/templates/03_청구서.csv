@@ -1,0 +1,4 @@
+﻿invoiceNo,issueDate,partnerCode,partnerName,itemName,quantity,unitPrice,supplyAmount,vatAmount,totalAmount,status
+INV-202609-0001,2026-09-30,P0001,대양공업,정밀가공,1,50000,50000,5000,55000,청구
+INV-202609-0002,2026-09-30,P0002,한일금속,레이저절단,2,20000,40000,4000,44000,청구
+INV-202609-0003,2026-09-30,P0003,태성정밀,정밀가공,1,55000,55000,5500,60500,청구

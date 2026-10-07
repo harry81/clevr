@@ -1,6 +1,35 @@
 /* 입금 등록 & 거래처 원장(화면 ④) — FIFO 즉시 충당 + A4 원장 인쇄 */
+
+// 제품 내장형 바이럴: 인쇄물 하단 1줄 마이크로 푸터 (외부 lib 0, 순수 문자열)
+function watermarkFooter() {
+  return '<p class="sme-print-footer">본 문서는 10인 이하 소규모 제조업을 위한 100% 무료·회원가입 없는 오픈소스 ERP [SME-ERP]로 작성되었습니다 · 데이터는 내 PC에만 저장됩니다 · 무료 다운로드: https://github.com/harry81/clevr/releases/latest</p>';
+}
+
+function printDoc(view) {
+  const App = window.App;
+  const { partner, summary, entries } = view;
+  const rows = entries.map((en) => `<tr><td>${App.esc(en.entryDate || '')}</td>
+    <td>${en.entryType === '입금' ? '입금' : '매출청구'}</td>
+    <td style="text-align:right">${App.won(en.supplyAmount)}</td>
+    <td style="text-align:right">${App.won(en.vatAmount)}</td>
+    <td style="text-align:right">${App.won(en.paidAmount)}</td>
+    <td style="text-align:right"><strong>${App.won(en.runningBalance)}</strong></td>
+    <td>${App.esc(en.invoiceNo || en.method || en.memo || '')}</td></tr>`).join('');
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">
+    <style>body{font-family:"Malgun Gothic",sans-serif;font-size:12px;color:#111}
+    h1{font-size:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:5px 7px}
+    th{background:#eee}.sum{margin:10px 0;font-size:14px}
+    .sme-print-footer{margin-top:10px;font-size:10px;color:#666;text-align:right}</style></head><body>
+    <h1>거래처별 거래 원장</h1>
+    <p>${App.esc(partner.partnerName)} ${App.esc(partner.bizNo || '')} · 출력일 ${App.todayStr()}</p>
+    <p class="sum">총 청구 ${App.won(summary.billedTotal)} · 총 입금 ${App.won(summary.paidTotal)} · <strong>미수잔액 ${App.won(summary.outstanding)}</strong></p>
+    <table><thead><tr><th>일자</th><th>구분</th><th>공급가액</th><th>부가세</th><th>입금액</th><th>차인지급잔액</th><th>비고</th></tr></thead>
+    <tbody>${rows}</tbody></table>${watermarkFooter()}</body></html>`;
+}
+
 window.App.views.ledger = {
   title: '입금 / 거래처 원장',
+  printDoc,
   async render(root, params) {
     const App = window.App;
     const companyId = App.state.companyId;
@@ -114,26 +143,6 @@ window.App.views.ledger = {
           App.toast(e.message, 'error');
         }
       });
-    }
-
-    function printDoc(view) {
-      const { partner, summary, entries } = view;
-      const rows = entries.map((en) => `<tr><td>${App.esc(en.entryDate || '')}</td>
-        <td>${en.entryType === '입금' ? '입금' : '매출청구'}</td>
-        <td style="text-align:right">${App.won(en.supplyAmount)}</td>
-        <td style="text-align:right">${App.won(en.vatAmount)}</td>
-        <td style="text-align:right">${App.won(en.paidAmount)}</td>
-        <td style="text-align:right"><strong>${App.won(en.runningBalance)}</strong></td>
-        <td>${App.esc(en.invoiceNo || en.method || en.memo || '')}</td></tr>`).join('');
-      return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">
-        <style>body{font-family:"Malgun Gothic",sans-serif;font-size:12px;color:#111}
-        h1{font-size:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:5px 7px}
-        th{background:#eee}.sum{margin:10px 0;font-size:14px}</style></head><body>
-        <h1>거래처별 거래 원장</h1>
-        <p>${App.esc(partner.partnerName)} ${App.esc(partner.bizNo || '')} · 출력일 ${App.todayStr()}</p>
-        <p class="sum">총 청구 ${App.won(summary.billedTotal)} · 총 입금 ${App.won(summary.paidTotal)} · <strong>미수잔액 ${App.won(summary.outstanding)}</strong></p>
-        <table><thead><tr><th>일자</th><th>구분</th><th>공급가액</th><th>부가세</th><th>입금액</th><th>차인지급잔액</th><th>비고</th></tr></thead>
-        <tbody>${rows}</tbody></table></body></html>`;
     }
 
     await draw();
